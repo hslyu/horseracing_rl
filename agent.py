@@ -12,6 +12,7 @@ class Agent:
         self.action_attempts = np.zeros(self.nA)
         self.t = 0
         self.last_action = None
+        self.gamma = gamma
 
     def reset(self):
         self._value_estimates[:] = 0
@@ -34,7 +35,10 @@ class Agent:
 
         # Q value of last action
         q_la = self._value_estimates[la]
-        self._value_estimates[la] = la + normalizer*(reward - q_la)
+        self._value_estimates[la] = q_la + normalizer*(reward - q_la)
+
+    def __str__(self):
+        return 'f/{}'.format(str(self.policy))
 
     @property
     def value_estimates(self):
@@ -61,11 +65,12 @@ class HorseBandit:
         self.counter = 0
 
     def reset(self):
-        shuffled_index = np.random.permutation(np.arange(12))
-        shuffled_races = []
-        for race in self.races:
-            shuffled_races.append([race[idx] for idx in shuffled_index])
-        self.races = shuffled_races
+#        shuffled_index = np.random.permutation(np.arange(12))
+#        shuffled_races = []
+#        for race in self.races:
+#            shuffled_races.append([race[idx] for idx in shuffled_index])
+#        self.races = shuffled_races
+        np.random.shuffle(self.races)
         self.counter = 0 
 
     def pull(self, action):
@@ -76,10 +81,13 @@ class HorseBandit:
         """
         self.counter+=1
         race = self.races[self.counter%len(self.races)]
-        if int(race[action]['rcOrd']) <= 3 and len(race) > 8:
-            return (1, True) if self.mode == "winloss" else (race[action]["rcP2Odd"], True) # win
-        elif int(race[action]['rcOrd']) <= 2 and len(race) > 7: 
-            return (1, True) if self.mode == "winloss" else (race[action]["rcP2Odd"], True) # win
+        try: 
+            if int(race[action]['rcOrd']) <= 3 and len(race) > 8:
+                return (10, True) if self.mode == "winloss" else (1e6*float(race[action]["rcP2Odd"]), True) # win
+            elif int(race[action]['rcOrd']) <= 2 and len(race) > 7: 
+                return (10, True) if self.mode == "winloss" else (1e6*float(race[action]["rcP2Odd"]), True) # win
+        except KeyError:
+            return 0, False
 
         return 0, False # lose
 
@@ -103,7 +111,6 @@ def main():
     hb.reset()
     for h in hb.races[0]:
         print(h)
-        break
     print(hb.counter)
     
 if __name__=="__main__":
